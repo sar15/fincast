@@ -1,0 +1,30 @@
+# Node
+node_modules/
+.next/
+out/
+build/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+.venv
+*.sqlite3
+
+# OS
+.DS_Store
+*.swp
+
+# IDE
+.vscode/
+.idea/
+
+# Custom data files
+*.csv
+*.xlsx
+*.xls
+!granular_test_data.csv # Maybe keep one test file? Actually ignore all for privacy
