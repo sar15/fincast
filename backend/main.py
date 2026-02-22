@@ -210,7 +210,7 @@ async def analyze_file(
         
         start_cash = data[-2].get("cash_balance", 0) if len(data) >= 2 else 0
         end_cash = rm.get("cash_balance", 0)
-        running_cash = end_cash
+        running_cash = round(end_cash)
         
         # --- PHASE 1: Compute raw EBT for all 12 months (needed for annual tax estimate) ---
         monthly_ebt = []
@@ -287,8 +287,8 @@ async def analyze_file(
             
             # Total Net Cash Flow
             cf_month = net_cash_operating + net_cash_investing + net_cash_financing
-            running_cash += cf_month
-            
+            rounded_cf_month = round(cf_month)
+            running_cash += rounded_cf_month
             # Use Indian FY month labels (Apr-Mar) instead of generic M1-M12
             month_label = INDIAN_FY_MONTHS[i] if i < len(INDIAN_FY_MONTHS) else f"M{i+1}"
             
@@ -315,8 +315,8 @@ async def analyze_file(
                 "net_cash_operating": round(net_cash_operating),
                 "net_cash_investing": round(net_cash_investing),
                 "net_cash_financing": round(net_cash_financing),
-                "net_cash_flow": round(cf_month),
-                "ending_cash": round(running_cash),
+                "net_cash_flow": rounded_cf_month,
+                "ending_cash": running_cash,
                 "is_tax_quarter": proj_tax > 0,
                 "line_items": proj_line_items
             })
