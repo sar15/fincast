@@ -139,8 +139,8 @@ async def analyze_file(
         
         avg_dso = countback_dso(current_ar, list(reversed(revenues)))
         # Simulated DPO = AP / (average COGS/365)
-        avg_monthly_cogs = sum(cogs_arr)/len(cogs_arr) if cogs_arr else 1
-        calc_dpo = (current_ap / (avg_monthly_cogs * 12)) * 365
+        avg_monthly_cogs = sum(cogs_arr)/len(cogs_arr) if cogs_arr else 0
+        calc_dpo = (current_ap / (avg_monthly_cogs * 12)) * 365 if avg_monthly_cogs > 0 else 0
         
         # Calculate profitability
         rm_rev = rm.get("revenue", 0)

@@ -24,8 +24,23 @@ def _get_mapped_column(columns, keywords):
 def local_fallback_parse(file_bytes: bytes, filename: str) -> dict:
     if filename.endswith(".csv"):
         df = pd.read_csv(io.BytesIO(file_bytes), header=None)
+        return _parse_dataframe(df, list(df.columns))
     else:
-        df = pd.read_excel(io.BytesIO(file_bytes), header=None)
+        # Try all sheets and pick the one that yields the most data
+        xls = pd.ExcelFile(io.BytesIO(file_bytes))
+        best_result = {"data": []}
+        for sheet in xls.sheet_names:
+            try:
+                df = pd.read_excel(io.BytesIO(file_bytes), sheet_name=sheet, header=None)
+                result = _parse_dataframe(df, list(df.columns))
+                if len(result["data"]) > len(best_result["data"]):
+                    best_result = result
+            except Exception:
+                continue
+        return best_result
+
+
+def _parse_dataframe(df, original_columns) -> dict:
 
     df = df.dropna(how='all', axis=0).dropna(how='all', axis=1).reset_index(drop=True)
     df_str = df.astype(str).map(lambda x: str(x).lower().strip())
@@ -59,11 +74,11 @@ def local_fallback_parse(file_bytes: bytes, filename: str) -> dict:
     columns = list(df.columns)
     
     # 1. Inflows & Revenue
-    rev_col = _get_mapped_column(columns, ['revenue', 'sales', 'turnover', 'income', 'receipts'])
+    rev_col = _get_mapped_column(columns, ['revenue', 'sales', 'turnover', 'income', 'receipts', 'inflow', 'cash in'])
     
     # 2. Outflows & Liabilities
-    cogs_col = _get_mapped_column(columns, ['cogs', 'cost of goods', 'cost of sales', 'direct cost', 'purchases'])
-    opex_col = _get_mapped_column(columns, ['opex', 'operating', 'expenses', 'indirect', 'admin', 'overhead'])
+    cogs_col = _get_mapped_column(columns, ['cogs', 'cost of goods', 'cost of sales', 'direct cost', 'direct expense', 'purchases', 'material'])
+    opex_col = _get_mapped_column(columns, ['opex', 'operating', 'expenses', 'indirect', 'admin', 'overhead', 'outflow', 'cash out', 'payment'])
     payroll_col = _get_mapped_column(columns, ['salary', 'payroll', 'wages', 'employee', 'pf', 'esi', 'labour'])
     debt_col = _get_mapped_column(columns, ['loan', 'debt', 'emi', 'interest', 'liabilities', 'borrowings'])
     invest_col = _get_mapped_column(columns, ['investment', 'capex', 'fixed asset', 'capital'])
