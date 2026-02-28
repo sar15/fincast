@@ -95,11 +95,26 @@ export default function DashboardPage() {
       })
 
       const canvas = await html2canvas(dashboardRef.current, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
         windowWidth: 1400,
+        removeContainer: true,
+        onclone: (clonedDoc: Document) => {
+          // Strip backdrop-filter — html2canvas crashes on this property
+          clonedDoc.querySelectorAll('*').forEach((el) => {
+            const htmlEl = el as HTMLElement
+            if (htmlEl.style) {
+              htmlEl.style.backdropFilter = 'none'
+              htmlEl.style.setProperty('-webkit-backdrop-filter', 'none')
+            }
+          })
+          // Also strip it from computed style overrides via class
+          const style = clonedDoc.createElement('style')
+          style.textContent = '* { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }'
+          clonedDoc.head.appendChild(style)
+        },
       })
 
       exportHideEls.forEach((el, i) => {
