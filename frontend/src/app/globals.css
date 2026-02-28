@@ -133,10 +133,18 @@
 /* === MOBILE RESPONSIVE === */
 @media (max-width: 768px) {
 
-  /* KPI cards: stack vertically with smaller text */
+  /* KPI cards: stack vertically with compact sizing */
   .kpi-grid {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
+  }
+
+  .kpi-grid>div {
+    padding: 16px 20px !important;
+  }
+
+  .kpi-grid>div h2 {
+    font-size: 1.75rem !important;
   }
 
   /* Tables: smooth horizontal scroll with momentum */
@@ -165,30 +173,105 @@
     min-width: 900px;
   }
 
-  /* Sticky first column on mobile for tables */
+  /* Sticky first column — solid backgrounds instead of inherit */
   .table-scroll-wrapper th:first-child,
   .table-scroll-wrapper td:first-child {
     position: sticky;
     left: 0;
     z-index: 2;
-    background: inherit;
-    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+    background-color: white;
+    box-shadow: 3px 0 6px rgba(0, 0, 0, 0.06);
+    min-width: 180px;
+  }
+
+  /* Sticky column backgrounds for every colored row variant */
+  .table-scroll-wrapper thead th:first-child {
+    background-color: #f8fafc !important;
+  }
+
+  .table-scroll-wrapper tr[class*="bg-slate-50"]>td:first-child,
+  .table-scroll-wrapper tr[class*="bg-slate-50"]>th:first-child {
+    background-color: #f8fafc !important;
+  }
+
+  .table-scroll-wrapper tr[class*="bg-indigo-50"]>td:first-child {
+    background-color: #eef2ff !important;
+  }
+
+  .table-scroll-wrapper tr[class*="bg-sky-50"]>td:first-child {
+    background-color: #f0f9ff !important;
+  }
+
+  .table-scroll-wrapper tr[class*="bg-amber-50"]>td:first-child {
+    background-color: #fffbeb !important;
+  }
+
+  .table-scroll-wrapper tr[class*="bg-emerald-50"]>td:first-child {
+    background-color: #ecfdf5 !important;
+  }
+
+  .table-scroll-wrapper tr[class*="bg-rose-50"]>td:first-child {
+    background-color: #fff1f2 !important;
+  }
+
+  .table-scroll-wrapper tr[class*="bg-slate-900"]>td:first-child {
+    background-color: #0f172a !important;
+    color: white !important;
   }
 
   /* Charts: reduce height on mobile */
-  .chart-mobile {
-    height: 200px !important;
+  .recharts-responsive-container {
+    height: 220px !important;
   }
 
-  /* Header: stack vertically */
+  /* Header: stack vertically, full width */
   .mobile-stack {
     flex-direction: column !important;
-    align-items: flex-start !important;
+    align-items: stretch !important;
+    width: 100%;
+    gap: 8px !important;
+  }
+
+  /* View toggle fills width on mobile */
+  .mobile-stack>div:first-child {
+    width: 100%;
+  }
+
+  .mobile-stack>div:first-child>button {
+    flex: 1;
+    justify-content: center;
+    font-size: 0.8rem !important;
+  }
+
+  /* Reduce border radius on mobile */
+  .rounded-3xl {
+    border-radius: 1.25rem !important;
+  }
+
+  /* Tighter section spacing */
+  .space-y-12> :not([hidden])~ :not([hidden]) {
+    margin-top: 1.5rem !important;
   }
 
   /* Hide complex views on very small screens */
   .hide-on-mobile {
     display: none !important;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .kpi-grid>div h2 {
+    font-size: 1.5rem !important;
+  }
+
+  .table-scroll-wrapper table {
+    font-size: 12px !important;
+  }
+
+  .table-scroll-wrapper th:first-child,
+  .table-scroll-wrapper td:first-child {
+    min-width: 150px;
   }
 }
 

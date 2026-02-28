@@ -25,48 +25,117 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dashboardRef = useRef<HTMLDivElement>(null)
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (!dashboardRef.current) return
     setExporting(true)
 
-    // Inject a branded header for print only
-    const header = document.createElement('div')
-    header.id = 'print-header'
-    header.innerHTML = `
-      <div style="padding: 20px 0 16px 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 20px; display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-          <div>
-            <h1 style="font-size: 24px; font-weight: 800; color: #1e293b; margin: 0;">FinCast CMA Report</h1>
-            <p style="font-size: 12px; color: #64748b; margin: 4px 0 0 0; font-weight: 500;">
-              ${file?.name || 'Financial Analysis'} • Generated ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
-          </div>
-          <p style="font-size: 10px; color: #94a3b8; margin: 0;">Powered by FinCast Intelligence Engine</p>
-        </div>
-      </div>
-    `
-    // Make it visible only in print
-    const style = document.createElement('style')
-    style.id = 'print-header-style'
-    style.textContent = `
-      @media print {
-        #print-header > div { display: flex !important; }
+    try {
+      const html2canvas = (await import('html2canvas')).default
+      const jsPDFModule = await import('jspdf')
+      const jsPDF = (jsPDFModule as any).jsPDF || (jsPDFModule as any).default
+
+      // A4 Landscape
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+      const pageWidth = 297
+      const pageHeight = 210
+      const margin = 12
+      const contentWidth = pageWidth - 2 * margin
+      const contentHeight = pageHeight - 2 * margin
+
+      // ═══ COVER PAGE ═══
+      pdf.setFillColor(15, 23, 42)
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F')
+
+      pdf.setFillColor(79, 70, 229)
+      pdf.rect(margin, 62, 50, 2.5, 'F')
+
+      pdf.setTextColor(255, 255, 255)
+      pdf.setFontSize(32)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text('FinCast CMA Report', margin, 80)
+
+      pdf.setFontSize(14)
+      pdf.setFont('helvetica', 'normal')
+      pdf.setTextColor(148, 163, 184)
+      pdf.text(file?.name || 'Financial Analysis', margin, 95)
+
+      pdf.setFontSize(11)
+      const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+      pdf.text(`Generated: ${dateStr}`, margin, 108)
+
+      pdf.setFontSize(10)
+      pdf.setTextColor(100, 116, 139)
+      pdf.text(
+        viewMode === 'schedule3' ? 'Schedule III \u2014 Indirect Method (Audit View)' : 'Direct Method \u2014 Management View',
+        margin, 120
+      )
+
+      if (kpis) {
+        pdf.setFontSize(10)
+        pdf.setTextColor(148, 163, 184)
+        pdf.text(`Projected 12-Month Revenue: ${formatINR(kpis.projected_12m)}`, margin, 145)
+        pdf.text(`EBITDA: ${formatINR(kpis.ebitda)}  |  Net Margin: ${kpis.net_margin}%  |  DSO: ${kpis.calculated_dso} days`, margin, 155)
+        if (tax_metadata) {
+          pdf.text(`Estimated Annual Tax Liability: ${formatINR(tax_metadata.estimated_annual_tax)}`, margin, 165)
+        }
       }
-    `
-    document.head.appendChild(style)
-    dashboardRef.current.prepend(header)
 
-    // Small delay for DOM to settle, then print
-    setTimeout(() => {
-      window.print()
+      pdf.setTextColor(71, 85, 105)
+      pdf.setFontSize(9)
+      pdf.text('Powered by FinCast Intelligence Engine', margin, pageHeight - 15)
+      pdf.text('Confidential', pageWidth - margin, pageHeight - 15, { align: 'right' })
 
-      // Cleanup after print dialog closes
-      setTimeout(() => {
-        header.remove()
-        style.remove()
-        setExporting(false)
-      }, 500)
-    }, 200)
+      // ═══ CONTENT PAGES ═══
+      const exportHideEls = dashboardRef.current.querySelectorAll('[data-export-hide]')
+      const savedDisplays: string[] = []
+      exportHideEls.forEach((el, i) => {
+        const htmlEl = el as HTMLElement
+        savedDisplays[i] = htmlEl.style.display
+        htmlEl.style.display = 'none'
+      })
+
+      const canvas = await html2canvas(dashboardRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: 1400,
+      })
+
+      exportHideEls.forEach((el, i) => {
+        (el as HTMLElement).style.display = savedDisplays[i]
+      })
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.92)
+      const imgWidth = contentWidth
+      const imgHeight = (canvas.height * contentWidth) / canvas.width
+
+      let heightLeft = imgHeight
+      let position = 0
+
+      while (heightLeft > 0) {
+        pdf.addPage()
+        pdf.addImage(imgData, 'JPEG', margin, margin - position, imgWidth, imgHeight)
+
+        const pageNum = pdf.getNumberOfPages() - 1
+        pdf.setFontSize(7)
+        pdf.setTextColor(180, 180, 180)
+        pdf.text(`FinCast CMA Report \u2014 ${file?.name || ''}`, margin, pageHeight - 4)
+        pdf.text(`Page ${pageNum}`, pageWidth - margin, pageHeight - 4, { align: 'right' })
+
+        heightLeft -= contentHeight
+        position += contentHeight
+      }
+
+      const safeName = (file?.name?.replace(/\.[^/.]+$/, '') || 'Report').replace(/[^a-zA-Z0-9_\-]/g, '_')
+      pdf.save(`FinCast_${safeName}_${new Date().toISOString().split('T')[0]}.pdf`)
+
+    } catch (error) {
+      console.error('PDF export failed:', error)
+      alert('PDF export failed. Please try again.')
+    } finally {
+      setExporting(false)
+    }
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,7 +262,7 @@ export default function DashboardPage() {
             {file?.name} • Algorithmically Forecasted
           </p>
         </div>
-        <div className="flex items-center gap-4 print:hidden mobile-stack flex-wrap">
+        <div className="flex items-center gap-4 print:hidden mobile-stack flex-wrap" data-export-hide>
           {/* Toggle Switch */}
           <div className="flex bg-white/80 backdrop-blur-3xl p-1 rounded-xl shadow-sm border border-slate-200">
             <button
@@ -216,7 +285,7 @@ export default function DashboardPage() {
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
           >
             {exporting ? <Activity className="animate-spin w-4 h-4" /> : <Download size={16} />}
-            {exporting ? "Rendering PDF..." : "Export Print PDF"}
+            {exporting ? "Generating PDF..." : "Export PDF"}
           </button>
         </div>
       </header>
@@ -311,7 +380,7 @@ export default function DashboardPage() {
         </div>
 
         {/* --- CA ASSUMPTION SANDBOX (Scenario Planner) --- */}
-        <div className="p-8 rounded-3xl bg-white/80 backdrop-blur-3xl border border-slate-200 shadow-sm print:hidden">
+        <div className="p-8 rounded-3xl bg-white/80 backdrop-blur-3xl border border-slate-200 shadow-sm print:hidden" data-export-hide>
           <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6">
             <div>
               <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
