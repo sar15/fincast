@@ -13,8 +13,12 @@ class FinancialMonth(BaseModel):
     revenue: float = Field(description="Total revenue for the month")
     cogs: float = Field(description="Cost of Goods Sold for the month. Always positive absolute value.")
     opex: float = Field(description="Operating Expenses for the month. Always positive absolute value.")
-    ar_balance: float = Field(description="Accounts Receivable ending balance for the month")
-    cash_balance: float = Field(description="Ending actual cash balance for the month")
+    payroll: float = Field(description="Salary, wages, PF, ESI expenses. Always positive.", default=0)
+    debt_service: float = Field(description="Loan EMI, interest payments. Always positive.", default=0)
+    capex: float = Field(description="Capital expenditure, fixed asset purchases. Always positive.", default=0)
+    ar_balance: float = Field(description="Accounts Receivable ending balance for the month", default=0)
+    ap_balance: float = Field(description="Accounts Payable ending balance for the month", default=0)
+    cash_balance: float = Field(description="Ending actual cash balance for the month", default=0)
     line_items: dict[str, float] = Field(description="A dictionary of all granular line items found (e.g., 'Marketing', 'Rent', 'Software', 'Travel'). Maintain exact original category names and positive absolute float values.", default_factory=dict)
 
 class ExtractedFinancials(BaseModel):
@@ -26,12 +30,27 @@ llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
 parser = PydanticOutputParser(pydantic_object=ExtractedFinancials)
 
 prompt = PromptTemplate(
-    template="""You are a highly expert forensic accountant AI. 
-Extract out monthly financial metrics from the messy spreadsheet raw text provided by the user. 
-Normalize all text to extract strictly the Revenue, COGS (Cost of Goods Sold), OpEx (Operating Expenses), A/R (Accounts Receivable) ending balance, and the Cash ending balance.
-CRITICAL: You must ALSO extract all specific granular expense or revenue line items (e.g., 'Advertising', 'Salaries', 'Rent', 'Consulting') into the `line_items` dictionary. Do not miss any specific categories. 
-If exact values are missing for smaller metrics like COGS or OpEx, try to deduce them or set to 0.0. Revenue and Cash shouldn't be zero unless explicitly 0.
-Ensure chronological order (oldest to newest month).
+    template="""You are a highly expert forensic accountant AI specializing in Indian SME financials.
+Extract monthly financial metrics from the messy spreadsheet data provided.
+
+For EACH month, extract:
+- revenue: Total revenue/sales/turnover/income/receipts
+- cogs: Cost of goods sold / direct costs / purchases / material costs
+- opex: Operating expenses / indirect expenses / admin / overhead
+- payroll: Salaries, wages, PF, ESI, employee costs
+- debt_service: Loan EMI, interest payments, borrowings repayment
+- capex: Capital expenditure, fixed asset purchases, equipment
+- ar_balance: Accounts receivable / debtors / sundry debtors balance
+- ap_balance: Accounts payable / creditors / sundry creditors balance
+- cash_balance: Cash and bank balance at end of month
+- line_items: Dictionary of ALL granular expense/revenue categories found
+
+RULES:
+1. All monetary values must be POSITIVE absolute values (no negatives)
+2. If exact values are missing, deduce from context or set to 0.0
+3. Revenue should not be zero unless the data explicitly shows zero
+4. Ensure chronological order (oldest to newest month)
+5. Handle Indian currency symbols (₹) and number formats (lakhs/crores)
 
 Format instructions:
 {format_instructions}

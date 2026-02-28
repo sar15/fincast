@@ -25,8 +25,80 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dashboardRef = useRef<HTMLDivElement>(null)
 
-  const handleExportPDF = () => {
-    window.print()
+  const handleExportPDF = async () => {
+    if (!dashboardRef.current) return
+    setExporting(true)
+    try {
+      const html2canvas = (await import('html2canvas')).default
+      const { jsPDF } = await import('jspdf')
+
+      const canvas = await html2canvas(dashboardRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#F9FAFB',
+        windowWidth: 1400,
+      })
+
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF('landscape', 'mm', 'a4')
+
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 10
+      const contentWidth = pageWidth - (margin * 2)
+
+      const imgWidth = contentWidth
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+      // Add branded cover header on first page
+      pdf.setFontSize(22)
+      pdf.setTextColor(30, 41, 59) // slate-800
+      pdf.text('FinCast CMA Report', margin, 15)
+      pdf.setFontSize(10)
+      pdf.setTextColor(100, 116, 139) // slate-500
+      pdf.text(`${file?.name || 'Financial Analysis'} • Generated ${new Date().toLocaleDateString('en-IN')}`, margin, 22)
+      pdf.setDrawColor(226, 232, 240) // slate-200
+      pdf.line(margin, 25, pageWidth - margin, 25)
+
+      // Split image across pages
+      let yOffset = 28
+      let remainingHeight = imgHeight
+      let sourceY = 0
+
+      while (remainingHeight > 0) {
+        const availableHeight = yOffset === 28 ? pageHeight - 28 - margin : pageHeight - (margin * 2)
+        const sliceHeight = Math.min(availableHeight, remainingHeight)
+        const sourceSliceHeight = (sliceHeight / imgHeight) * canvas.height
+
+        // Create a slice of the canvas
+        const sliceCanvas = document.createElement('canvas')
+        sliceCanvas.width = canvas.width
+        sliceCanvas.height = sourceSliceHeight
+        const ctx = sliceCanvas.getContext('2d')
+        if (ctx) {
+          ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceSliceHeight, 0, 0, canvas.width, sourceSliceHeight)
+          const sliceData = sliceCanvas.toDataURL('image/png')
+          pdf.addImage(sliceData, 'PNG', margin, yOffset, imgWidth, sliceHeight)
+        }
+
+        remainingHeight -= sliceHeight
+        sourceY += sourceSliceHeight
+
+        if (remainingHeight > 0) {
+          pdf.addPage()
+          yOffset = margin
+        }
+      }
+
+      pdf.save(`FinCast_Report_${new Date().toISOString().split('T')[0]}.pdf`)
+    } catch (err) {
+      console.error('PDF export failed:', err)
+      // Fallback to window.print
+      window.print()
+    } finally {
+      setExporting(false)
+    }
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,7 +225,7 @@ export default function DashboardPage() {
             {file?.name} • Algorithmically Forecasted
           </p>
         </div>
-        <div className="flex items-center gap-4 print:hidden">
+        <div className="flex items-center gap-4 print:hidden mobile-stack flex-wrap">
           {/* Toggle Switch */}
           <div className="flex bg-white/80 backdrop-blur-3xl p-1 rounded-xl shadow-sm border border-slate-200">
             <button
@@ -184,14 +256,14 @@ export default function DashboardPage() {
       <div ref={dashboardRef} className="pb-20 space-y-12 animate-in slide-in-from-bottom-12 duration-1000">
 
         {/* Premium Advanced KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 print:grid-cols-4 print:gap-4">
+        <div className="kpi-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 print:grid-cols-4 print:gap-4">
           {[
             { title: 'Projected Outlook (12m)', value: formatINR(kpis.projected_12m), change: 'Holt-Winters Baseline Baseline', icon: <Activity size={20} className="text-emerald-600" />, detail: "Exponential smoothing projection based on extracted revenue trajectory.", bg: "bg-emerald-50" },
             { title: 'EBITDA (Latest Period)', value: formatINR(kpis.ebitda), change: 'Core Operating Profit', icon: <DollarSign size={20} className="text-indigo-600" />, detail: "Calculated dynamically: Revenue - COGS - OpEx - Payroll.", bg: "bg-indigo-50" },
             { title: 'Gross vs Net Margin', value: `${kpis.net_margin}%`, change: `Gross: ${kpis.gross_margin}%`, icon: <ArrowUpRight size={20} className="text-sky-600" />, detail: "Profitability matrix subtracting Debt Service and Capex outflows.", bg: "bg-sky-50" },
             { title: 'Liquidity Ratios (DSO / DPO)', value: `${kpis.calculated_dso} / ${kpis.calculated_dpo}`, change: 'Days to Pay vs Get Paid', icon: <Wallet size={20} className="text-amber-600" />, detail: "Advanced Countback exhaustion of actual Receivable/Payable outstanding.", bg: "bg-amber-50" },
           ].map((kpi, i) => (
-            <div key={i} className={`group p-8 animate-in slide-in-from-bottom-8 fade-in duration-700 delay-[${i * 150}ms] fill-mode-both rounded-2xl bg-white/80 backdrop-blur-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300`}>
+            <div key={i} className={`group p-5 md:p-8 animate-in slide-in-from-bottom-8 fade-in duration-700 delay-[${i * 150}ms] fill-mode-both rounded-2xl bg-white/80 backdrop-blur-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300`}>
               <div className="flex justify-between items-start mb-5">
                 <h3 className="text-slate-500/90 font-semibold text-sm tracking-wide">{kpi.title}</h3>
                 <div className={`p-2.5 rounded-xl ${kpi.bg}`}>{kpi.icon}</div>
@@ -346,7 +418,7 @@ export default function DashboardPage() {
               <h2 className="text-2xl font-bold text-slate-800">Statement of Cash Flows</h2>
               <p className="text-slate-500/90 font-medium mt-1">Projected for the 12-month period ended March 31</p>
             </div>
-            <div className="overflow-x-auto pb-4">
+            <div className="table-scroll-wrapper overflow-x-auto pb-4">
               <table className="w-full text-sm text-left align-middle border-collapse min-w-[1000px] print:min-w-0 print:text-[9.5px] print:leading-tight">
                 <thead className="text-xs text-slate-500/90 uppercase bg-slate-50 border-b-2 border-slate-200">
                   <tr>
@@ -456,7 +528,7 @@ export default function DashboardPage() {
                 <p className="text-slate-500/90 font-medium mt-1">Management overview with granular deep-dive capabilities</p>
               </div>
             </div>
-            <div className="overflow-x-auto pb-4">
+            <div className="table-scroll-wrapper overflow-x-auto pb-4">
               <table className="w-full text-sm text-left align-middle border-collapse min-w-[1000px] print:min-w-0 print:text-[9.5px] print:leading-tight">
                 <thead className="text-xs text-slate-500/90 uppercase bg-slate-50 border-b-2 border-slate-200">
                   <tr>

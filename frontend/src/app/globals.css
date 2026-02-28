@@ -32,6 +32,68 @@
   }
 }
 
+/* === MOBILE RESPONSIVE === */
+@media (max-width: 768px) {
+
+  /* KPI cards: stack vertically with smaller text */
+  .kpi-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Tables: smooth horizontal scroll with momentum */
+  .table-scroll-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    position: relative;
+  }
+
+  /* Fade hint that table scrolls horizontally */
+  .table-scroll-wrapper::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 40px;
+    background: linear-gradient(to right, transparent, rgba(249, 250, 251, 0.9));
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .table-scroll-wrapper table {
+    min-width: 900px;
+  }
+
+  /* Sticky first column on mobile for tables */
+  .table-scroll-wrapper th:first-child,
+  .table-scroll-wrapper td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: inherit;
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Charts: reduce height on mobile */
+  .chart-mobile {
+    height: 200px !important;
+  }
+
+  /* Header: stack vertically */
+  .mobile-stack {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  /* Hide complex views on very small screens */
+  .hide-on-mobile {
+    display: none !important;
+  }
+}
+
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 

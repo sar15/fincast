@@ -119,7 +119,42 @@ async def analyze_file(
             data = structured_data["data"]
             
         if len(data) < 3:
-            raise HTTPException(status_code=400, detail="Data must contain at least 3 months of explicit chronological data for accurate ML forecasting.")
+            # === PARSER FALLBACK CHAIN ===
+            # local_parser failed to extract enough data.
+            # Try AI parser (Gemini) if GOOGLE_API_KEY is available.
+            ai_fallback_used = False
+            if os.environ.get("GOOGLE_API_KEY"):
+                try:
+                    from parser import parse_financials
+                    print(f"[FALLBACK] local_parser extracted {len(data)} months. Trying AI parser...")
+                    ai_result = await parse_financials(contents, file.filename)
+                    if ai_result and len(ai_result.data) >= 3:
+                        data = []
+                        for m in ai_result.data:
+                            data.append({
+                                "month": m.month,
+                                "revenue": abs(m.revenue),
+                                "cogs": abs(m.cogs),
+                                "opex": abs(m.opex),
+                                "payroll": abs(m.payroll),
+                                "debt_service": abs(m.debt_service),
+                                "capex": abs(m.capex),
+                                "ar_balance": abs(m.ar_balance),
+                                "ap_balance": abs(m.ap_balance),
+                                "cash_balance": m.cash_balance,
+                                "line_items": {k: abs(v) for k, v in m.line_items.items()}
+                            })
+                        ai_fallback_used = True
+                        print(f"[FALLBACK] AI parser extracted {len(data)} months successfully.")
+                except Exception as parse_err:
+                    print(f"[FALLBACK] AI parser failed: {parse_err}")
+            
+            if len(data) < 3:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Data must contain at least 3 months of explicit chronological data for accurate ML forecasting. "
+                           "Tip: Ensure your file has monthly columns (or rows) with revenue/sales and expense data."
+                )
             
         # Extract and compute timeseries averages for the new deep metrics
         revenues = [d.get("revenue", 0) for d in data]
