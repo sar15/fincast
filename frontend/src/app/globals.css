@@ -1,34 +1,132 @@
 @import "tailwindcss";
 @media print {
+
+  /* Force color rendering */
   body {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-    background-color: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    background: white !important;
+    font-size: 11px !important;
   }
 
   @page {
     size: A4 landscape;
-    margin: 10mm;
+    margin: 8mm 10mm;
   }
 
-  button {
+  /* Hide all interactive elements */
+  button,
+  input,
+  label {
     display: none !important;
   }
 
-  .recharts-responsive-container {
-    height: 300px !important;
-    width: 100% !important;
-    break-inside: avoid;
+  /* Reset padding/margins for print */
+  .min-h-screen {
+    min-height: auto !important;
+    padding: 0 !important;
+    background: white !important;
   }
 
-  table,
-  tr,
-  td,
-  th,
-  tbody,
-  thead,
-  tfoot {
+  /* Charts — fixed height, prevent overflow */
+  .recharts-responsive-container {
+    height: 250px !important;
+    width: 100% !important;
     break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Chart container — keep together */
+  .recharts-responsive-container svg {
+    max-height: 250px !important;
+  }
+
+  /* Tables — the critical fix */
+  table {
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 9px !important;
+    line-height: 1.3 !important;
+    border-collapse: collapse !important;
+  }
+
+  th,
+  td {
+    padding: 3px 5px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Prevent tables from overflowing pages */
+  thead {
+    display: table-header-group !important;
+  }
+
+  tbody tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Section breaks — keep major blocks together */
+  [class*="bg-white"] {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Remove backdrop blur for print (crashes some renderers) */
+  .backdrop-blur-3xl {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* KPI cards — tighter layout for print */
+  .kpi-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .kpi-grid>div {
+    padding: 10px !important;
+  }
+
+  /* Table scroll wrapper — remove scroll for print */
+  .table-scroll-wrapper {
+    overflow: visible !important;
+  }
+
+  .table-scroll-wrapper::after {
+    display: none !important;
+  }
+
+  /* Remove animations */
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Dark rows in tables — force background */
+  .bg-slate-900,
+  [class*="bg-slate-900"] {
+    background-color: #0f172a !important;
+    color: white !important;
+  }
+
+  /* Subtle background rows in tables */
+  [class*="bg-indigo-50"],
+  [class*="bg-sky-50"],
+  [class*="bg-amber-50"],
+  [class*="bg-emerald-50"],
+  [class*="bg-rose-50"] {
+    background-color: #f8fafc !important;
+  }
+
+  /* Tax quarter highlighting */
+  .bg-rose-50 {
+    background-color: #fff1f2 !important;
   }
 }
 

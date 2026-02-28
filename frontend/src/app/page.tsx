@@ -25,80 +25,48 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dashboardRef = useRef<HTMLDivElement>(null)
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     if (!dashboardRef.current) return
     setExporting(true)
-    try {
-      const html2canvas = (await import('html2canvas')).default
-      const { jsPDF } = await import('jspdf')
 
-      const canvas = await html2canvas(dashboardRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#F9FAFB',
-        windowWidth: 1400,
-      })
-
-      const imgData = canvas.toDataURL('image/png')
-      const pdf = new jsPDF('landscape', 'mm', 'a4')
-
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      const margin = 10
-      const contentWidth = pageWidth - (margin * 2)
-
-      const imgWidth = contentWidth
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-
-      // Add branded cover header on first page
-      pdf.setFontSize(22)
-      pdf.setTextColor(30, 41, 59) // slate-800
-      pdf.text('FinCast CMA Report', margin, 15)
-      pdf.setFontSize(10)
-      pdf.setTextColor(100, 116, 139) // slate-500
-      pdf.text(`${file?.name || 'Financial Analysis'} • Generated ${new Date().toLocaleDateString('en-IN')}`, margin, 22)
-      pdf.setDrawColor(226, 232, 240) // slate-200
-      pdf.line(margin, 25, pageWidth - margin, 25)
-
-      // Split image across pages
-      let yOffset = 28
-      let remainingHeight = imgHeight
-      let sourceY = 0
-
-      while (remainingHeight > 0) {
-        const availableHeight = yOffset === 28 ? pageHeight - 28 - margin : pageHeight - (margin * 2)
-        const sliceHeight = Math.min(availableHeight, remainingHeight)
-        const sourceSliceHeight = (sliceHeight / imgHeight) * canvas.height
-
-        // Create a slice of the canvas
-        const sliceCanvas = document.createElement('canvas')
-        sliceCanvas.width = canvas.width
-        sliceCanvas.height = sourceSliceHeight
-        const ctx = sliceCanvas.getContext('2d')
-        if (ctx) {
-          ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceSliceHeight, 0, 0, canvas.width, sourceSliceHeight)
-          const sliceData = sliceCanvas.toDataURL('image/png')
-          pdf.addImage(sliceData, 'PNG', margin, yOffset, imgWidth, sliceHeight)
-        }
-
-        remainingHeight -= sliceHeight
-        sourceY += sourceSliceHeight
-
-        if (remainingHeight > 0) {
-          pdf.addPage()
-          yOffset = margin
-        }
+    // Inject a branded header for print only
+    const header = document.createElement('div')
+    header.id = 'print-header'
+    header.innerHTML = `
+      <div style="padding: 20px 0 16px 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 20px; display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+          <div>
+            <h1 style="font-size: 24px; font-weight: 800; color: #1e293b; margin: 0;">FinCast CMA Report</h1>
+            <p style="font-size: 12px; color: #64748b; margin: 4px 0 0 0; font-weight: 500;">
+              ${file?.name || 'Financial Analysis'} • Generated ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+          </div>
+          <p style="font-size: 10px; color: #94a3b8; margin: 0;">Powered by FinCast Intelligence Engine</p>
+        </div>
+      </div>
+    `
+    // Make it visible only in print
+    const style = document.createElement('style')
+    style.id = 'print-header-style'
+    style.textContent = `
+      @media print {
+        #print-header > div { display: flex !important; }
       }
+    `
+    document.head.appendChild(style)
+    dashboardRef.current.prepend(header)
 
-      pdf.save(`FinCast_Report_${new Date().toISOString().split('T')[0]}.pdf`)
-    } catch (err) {
-      console.error('PDF export failed:', err)
-      // Fallback to window.print
+    // Small delay for DOM to settle, then print
+    setTimeout(() => {
       window.print()
-    } finally {
-      setExporting(false)
-    }
+
+      // Cleanup after print dialog closes
+      setTimeout(() => {
+        header.remove()
+        style.remove()
+        setExporting(false)
+      }, 500)
+    }, 200)
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
